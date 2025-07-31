@@ -1,0 +1,208 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# pytest
+.cache
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# VS Code
+.vscode/
+
+# Data, models, and experiment outputs
+cache/
+*.npy
+*.npz
+*.pkl
+*.pt
+*.ckpt
+*.log
+*.csv
+*.jsonl
+*.h5
+*.onnx
+*.bin
+*.lock
+*.tmp
+*.log
+*.out
+*.err
+*.dat
+*.pdb
+*.pkl
+*.pickle
+*.joblib
+*.tar.gz
+*.tar
+*.zip
+*.gz
+*.bz2
+*.7z
+*.rar
+
+# Results and experiment folders
+results/
+experiment_results/
+selected_samples/
+finetuned_models/
+wandb/
+
+
+d2pruning/cache/
+d2pruning/finetune_models_50/
+d2pruning/finetuned_models_10/
+d2pruning/finetuned_uncertainty/
+d2pruning/finetuned_uncertainty_1/
+d2pruning/hybrid_selection_results/
+d2pruning/eval/
+d2pruning/wandb/
+d2pruning/eval_uncert/
+d2pruning/eval_uncert_1/
+d2pruning/results_0/
+*.pyc
+__pycache__/
+
+evaluation_results/
+data/
+venv/
+logs/
+
+.DS_Store
+
+# System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+
+# Other
+*.swp
+*.swo
+*~
+.idea/
+*.bak
+
+# Ignore user-specific config
+*.env
+.env.*
+
+# Ignore shell history
+*.sh_history
+
+# Ignore notebooks outputs
+*.nbconvert.ipynb
+
+# Ignore test outputs
+*.pytest_cache/
+
+# Ignore backup files
+*~
+*.bak
+
+# Ignore logs
+*.log
+
+# Ignore experiment outputs
+*.out
+*.err
+
+# Ignore model checkpoints
+*.ckpt
+*.pt
+*.pth
+
+# Ignore large files
+*.tar.gz
+*.zip
+*.tar
+*.gz
+*.bz2
+*.7z
+*.rar
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore data
+*.csv
+*.tsv
+*.jsonl
+*.json
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.hdf5
+*.h5
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore experiment folders
+cache/
+results/
+experiment_results/
+selected_samples/
+finetuned_models/
+wandb/

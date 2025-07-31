@@ -1,0 +1,42 @@
+scipy
+tqdm
+scikit-learn==0.24
+# DialogSum Data Selection Requirements
+# Additional requirements for the DialogSum experiment
+
+# Core ML libraries
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.10.0
+accelerate>=0.20.0
+evaluate>=0.4.0
+
+# Sentence transformers for embeddings
+sentence-transformers>=2.2.0
+
+# PEFT for LoRA fine-tuning
+peft>=0.4.0
+
+# Evaluation metrics
+rouge-score>=0.1.2
+
+# Data processing
+pandas>=1.5.0
+numpy>=1.24.0
+
+# Progress bars and utilities
+tqdm>=4.65.0
+
+# Quantization support
+bitsandbytes>=0.39.0
+
+# GPU acceleration (optional)
+# flash-attn>=2.0.0  # Uncomment if you have compatible GPU
+
+# Experiment tracking
+wandb>=0.15.0
+
+# Development and debugging
+ipython>=8.0.0
+jupyter>=1.0.0
+seaborn
