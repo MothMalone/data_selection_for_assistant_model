@@ -2,7 +2,7 @@
 """
 Evaluation Pipeline for DialogSum Summarization
 
-This script evaluates fine-tuned LLaMA models on DialogSum test set using ROUGE metrics.
+This script evaluates fine-tuned LLaMA models on DialogSum test set using ROUGE and BERTScore metrics.
 Revamped to use the preferred evaluation format with proper wandb integration.
 """
 
@@ -96,6 +96,8 @@ class SummarizationEvaluator:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         self.rouge_scorer = load("rouge")
+        # Load BERTScore metric
+        self.bertscore_scorer = evaluate.load("bertscore")
 
     def load_test_data(self, max_samples: int = None, seed: int = 42) -> Dataset:
         """Load and optionally subsample the DialogSum test dataset."""
@@ -135,7 +137,7 @@ class SummarizationEvaluator:
         logger.info("Model and tokenizer loaded successfully.")
         return model, tokenizer
 
-    def generate_summaries(self, model, tokenizer, dataset, batch_size: int = 8, max_new_tokens: int = 150):
+    def generate_summaries(self, model, tokenizer, dataset, batch_size: int = 16, max_new_tokens: int = 150):
         """Generate summaries for the entire dataset."""
         logger.info("Starting summary generation...")
         
@@ -186,56 +188,83 @@ class SummarizationEvaluator:
         return predictions, references
 
     def compute_and_log_metrics(self, predictions, references, log_interval=10):
-        """Compute ROUGE scores and log them incrementally to wandb."""
+        """Compute ROUGE and BERTScore scores and log them incrementally to wandb."""
         logger.info("Computing and logging metrics...")
         
-        all_scores = []
-        for i in tqdm(range(0, len(predictions), log_interval), desc="Calculating ROUGE"):
+        all_rouge_scores = []
+        all_bert_scores = []
+
+        for i in tqdm(range(0, len(predictions), log_interval), desc="Calculating Metrics"):
             pred_chunk = predictions[i:i+log_interval]
             ref_chunk = references[i:i+log_interval]
             
             if not pred_chunk or not ref_chunk:
                 continue
 
-            scores = self.rouge_scorer.compute(predictions=pred_chunk, references=ref_chunk, use_stemmer=True)
-            all_scores.append(scores)
+            # ROUGE scores
+            rouge_scores = self.rouge_scorer.compute(predictions=pred_chunk, references=ref_chunk, use_stemmer=True)
+            all_rouge_scores.append(rouge_scores)
+            
+            # BERTScore
+            bert_scores = self.bertscore_scorer.compute(predictions=pred_chunk, references=ref_chunk, lang="en")
+            all_bert_scores.append(bert_scores)
             
             # Aggregate scores up to the current point for logging
             agg_preds = predictions[:i+log_interval]
             agg_refs = references[:i+log_interval]
-            agg_scores = self.rouge_scorer.compute(predictions=agg_preds, references=agg_refs, use_stemmer=True)
-            
-            # Handle both object-based and direct float score formats
+            agg_rouge_scores = self.rouge_scorer.compute(predictions=agg_preds, references=agg_refs, use_stemmer=True)
+            agg_bert_scores = self.bertscore_scorer.compute(predictions=agg_preds, references=agg_refs, lang="en")
+
+            log_data = {
+                "eval/step": i + log_interval,
+                "eval/bertscore_precision": np.mean(agg_bert_scores['precision']),
+                "eval/bertscore_recall": np.mean(agg_bert_scores['recall']),
+                "eval/bertscore_f1": np.mean(agg_bert_scores['f1']),
+            }
+
+            # Handle both object-based and direct float score formats for ROUGE
             try:
                 # Try the object format first (some ROUGE implementations)
-                wandb.log({
-                    "eval/rouge1": agg_scores["rouge1"].mid.fmeasure,
-                    "eval/rouge2": agg_scores["rouge2"].mid.fmeasure,
-                    "eval/rougeL": agg_scores["rougeL"].mid.fmeasure,
-                    "eval/rougeLsum": agg_scores["rougeLsum"].mid.fmeasure,
-                    "eval/step": i + log_interval
+                log_data.update({
+                    "eval/rouge1": agg_rouge_scores["rouge1"].mid.fmeasure,
+                    "eval/rouge2": agg_rouge_scores["rouge2"].mid.fmeasure,
+                    "eval/rougeL": agg_rouge_scores["rougeL"].mid.fmeasure,
+                    "eval/rougeLsum": agg_rouge_scores["rougeLsum"].mid.fmeasure,
                 })
             except AttributeError:
                 # Fall back to direct float format
-                wandb.log({
-                    "eval/rouge1": agg_scores["rouge1"],
-                    "eval/rouge2": agg_scores["rouge2"],
-                    "eval/rougeL": agg_scores["rougeL"],
-                    "eval/rougeLsum": agg_scores["rougeLsum"],
-                    "eval/step": i + log_interval
+                log_data.update({
+                    "eval/rouge1": agg_rouge_scores["rouge1"],
+                    "eval/rouge2": agg_rouge_scores["rouge2"],
+                    "eval/rougeL": agg_rouge_scores["rougeL"],
+                    "eval/rougeLsum": agg_rouge_scores["rougeLsum"],
                 })
+            wandb.log(log_data)
 
-        # Final overall score
-        final_scores = self.rouge_scorer.compute(predictions=predictions, references=references, use_stemmer=True)
-        logger.info(f"Final ROUGE scores: {final_scores}")
+
+        # Final overall scores
+        final_rouge_scores = self.rouge_scorer.compute(predictions=predictions, references=references, use_stemmer=True)
+        final_bert_scores = self.bertscore_scorer.compute(predictions=predictions, references=references, lang="en")
         
-        # Handle both object-based and direct float score formats
+        logger.info(f"Final ROUGE scores: {final_rouge_scores}")
+        logger.info(f"Final BERTScore: Precision: {np.mean(final_bert_scores['precision'])}, Recall: {np.mean(final_bert_scores['recall'])}, F1: {np.mean(final_bert_scores['f1'])}")
+
+        # Prepare final results dictionary
+        results = {}
         try:
-            # Try the object format first
-            return {k: v.mid.fmeasure for k, v in final_scores.items()}
+            # Try the object format first for ROUGE
+            results.update({k: v.mid.fmeasure for k, v in final_rouge_scores.items()})
         except AttributeError:
             # Fall back to direct float format
-            return final_scores
+            results.update(final_rouge_scores)
+        
+        results.update({
+            'bertscore_precision': np.mean(final_bert_scores['precision']),
+            'bertscore_recall': np.mean(final_bert_scores['recall']),
+            'bertscore_f1': np.mean(final_bert_scores['f1']),
+        })
+
+        return results
 
 
 def load_training_results(results_file: str) -> Dict[str, Any]:
@@ -247,27 +276,27 @@ def load_training_results(results_file: str) -> Dict[str, Any]:
 def main():
     parser = argparse.ArgumentParser(description="Evaluate DialogSum Summarization Models")
     parser.add_argument("--model_dirs", type=str, nargs='+', required=True,
-                       help="Directories containing fine-tuned models")
-    parser.add_argument("--base_model", type=str, default="meta-llama/Llama-2-7b-hf",
-                       help="Base LLaMA model name")
+                        help="Directories containing fine-tuned models")
+    parser.add_argument("--base_model", type=str, default="meta-llama/Llama-2-13b-hf",
+                        help="Base LLaMA model name")
     parser.add_argument("--max_test_samples", type=int, default=500,
-                       help="Maximum number of test samples to evaluate (default: 500)")
+                        help="Maximum number of test samples to evaluate (default: 500)")
     parser.add_argument("--output_dir", type=str, default="./evaluation_results",
-                       help="Output directory for evaluation results")
+                        help="Output directory for evaluation results")
     parser.add_argument("--cache_dir", type=str, default="./cache",
-                       help="Cache directory")
+                        help="Cache directory")
     parser.add_argument("--seed", type=int, default=42,
-                       help="Random seed")
-    parser.add_argument("--batch_size", type=int, default=4,
-                       help="Batch size for evaluation")
+                        help="Random seed")
+    parser.add_argument("--batch_size", type=int, default=8,
+                        help="Batch size for evaluation")
     parser.add_argument("--enable_wandb", action="store_true", default=False,
-                       help="Enable Weights & Biases logging")
+                        help="Enable Weights & Biases logging")
     parser.add_argument("--wandb_project", type=str, default="data-selection-experiments",
-                       help="W&B project name")
+                        help="W&B project name")
     parser.add_argument("--wandb_run_group", type=str, default=None,
-                       help="W&B run group name")
+                        help="W&B run group name")
     parser.add_argument("--wandb_api_key", type=str, default=os.getenv("WANDB_API_KEY"),
-                       help="Wandb API key for logging")
+                        help="Wandb API key for logging")
 
     args = parser.parse_args()
 
@@ -316,16 +345,21 @@ def main():
             )
             
             if args.enable_wandb:
-                rouge_scores = evaluator.compute_and_log_metrics(predictions, references)
+                scores = evaluator.compute_and_log_metrics(predictions, references)
             else:
                 rouge_scores = evaluator.rouge_scorer.compute(predictions=predictions, references=references, use_stemmer=True)
-                # Handle different return formats (object with mid.fmeasure or direct float values)
+                bert_scores = evaluator.bertscore_scorer.compute(predictions=predictions, references=references, lang="en")
+                
+                # Handle different return formats for ROUGE
                 rouge_scores = {
                     k: v.mid.fmeasure if hasattr(v, 'mid') else v 
                     for k, v in rouge_scores.items()
                 }
+                
+                scores = {**rouge_scores, 'bertscore_f1': np.mean(bert_scores['f1'])}
 
-            all_results[model_key] = rouge_scores
+
+            all_results[model_key] = scores
 
             # Log final results table to wandb
             if args.enable_wandb:
@@ -375,6 +409,7 @@ def main():
             "rouge2": scores.get('rouge2', 0),
             "rougeL": scores.get('rougeL', 0),
             "rougeLsum": scores.get('rougeLsum', 0),
+            "bertscore_f1": scores.get('bertscore_f1', 0),
         }
 
     summary_file = output_dir / "comparison_summary.json"
@@ -385,14 +420,14 @@ def main():
     logger.info("Evaluation completed successfully!")
 
     # Print summary table
-    print("\n" + "="*80)
+    print("\n" + "="*95)
     print("EVALUATION SUMMARY")
-    print("="*80)
-    print(f"{'Model':<40} {'ROUGE-1':<10} {'ROUGE-2':<10} {'ROUGE-Lsum':<10}")
-    print("-" * 80)
+    print("="*95)
+    print(f"{'Model':<40} {'ROUGE-1':<10} {'ROUGE-2':<10} {'ROUGE-Lsum':<12} {'BERTScore-F1':<15}")
+    print("-" * 95)
     for model_key, summary in comparison_summary.items():
-        print(f"{model_key:<40} {summary['rouge1']:<10.4f} {summary['rouge2']:<10.4f} {summary['rougeLsum']:<10.4f}")
-    print("="*80)
+        print(f"{model_key:<40} {summary['rouge1']:<10.4f} {summary['rouge2']:<10.4f} {summary['rougeLsum']:<12.4f} {summary['bertscore_f1']:<15.4f}")
+    print("="*95)
 
 
 if __name__ == "__main__":

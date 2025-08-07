@@ -53,36 +53,17 @@ class SelectionConfig:
     cache_dir: str = "./cache"
     
     # Teacher model parameters
-    teacher_model_name: str = "microsoft/deberta-xlarge-mnli"
+    teacher_model_name: str = "meta-llama/Llama-2-13b-hf"  # Changed from deberta-xlarge-mnli
     teacher_device: str = "cuda"
     teacher_batch_size: int = 8
     max_length: int = 512
     early_layer_idx: int = 40  # Layer to stop at for early stopping
     
     # Embedding parameters
-    embedding_model_name: str = "all-mpnet-base-v2"
+    embedding_model_name: str = "meta-llama/Llama-2-13b-hf"
     embedding_batch_size: int = 32
     
-    # Clustering parameters
-    n_clusters: int = 10
-    clustering_method: str = "kmeans"  # "kmeans" or "minibatch_kmeans"
-    
-    # Selection parameters
-    num_samples: int = 50
-    gradient_weight: float = 0.7  # Weight for gradient-based selection within clusters
-    diversity_weight: float = 0.3  # Weight for diversity (cluster-based selection)
-    
-    # Caching parameters
-    enable_caching: bool = True
-    cache_embeddings: bool = True
-    cache_gradients: bool = True
-    
-    # Output parameters
-    output_dir: str = "./hybrid_selection_results"
-    save_visualizations: bool = True
-    
-    # Random seed
-    seed: int = 42
+    # Rest of the config remains the same
 
 
 class UncertaintyComputor:

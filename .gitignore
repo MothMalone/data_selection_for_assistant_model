@@ -107,6 +107,7 @@ selected_samples/
 finetuned_models/
 wandb/
 
+d2pruning/finetuned_gradient
 
 d2pruning/cache/
 d2pruning/finetune_models_50/

@@ -191,7 +191,7 @@ class DialogSumDataFormatter:
 class LlamaFineTuner:
     """Handles LLaMA-7B fine-tuning with LoRA."""
     
-    def __init__(self, model_name: str = "meta-llama/Llama-2-7b-hf", cache_dir: str = "./cache"):
+    def __init__(self, model_name: str = "meta-llama/Llama-2-13b-hf", cache_dir: str = "./cache"):
         self.model_name = model_name
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
@@ -414,7 +414,7 @@ def main():
     parser = argparse.ArgumentParser(description="LLaMA-7B Fine-tuning for DialogSum")
     parser.add_argument("--selection_results", type=str, required=True,
                        help="Path to selection results JSON file")
-    parser.add_argument("--model_name", type=str, default="meta-llama/Llama-2-7b-hf",
+    parser.add_argument("--model_name", type=str, default="meta-llama/Llama-2-13b-hf",
                        help="LLaMA model name")
     parser.add_argument("--format_type", type=str, default="alpaca",
                        choices=["instruction", "chat", "alpaca", "vicuna"],
