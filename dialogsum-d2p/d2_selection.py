@@ -274,25 +274,36 @@ def main():
         gamma=args.gamma
     )
     
-    # Run D2Pruning selection with logging
+    # Time the selection process
     logger.info(f"Selecting {args.num_samples} samples with D2Pruning algorithm...")
+    start_time = time.time()
     selected_indices = sampler.select_batch(args.num_samples, log_interval=args.log_interval)
+    selection_time = time.time() - start_time
     
     # Get selected examples
     selected_dataset = dataset.select(selected_indices)
     
-    # Create selection results
+    # Calculate metadata
+    dialogue_lengths = [len(d) for d in dataset["dialogue"]]
+    summary_lengths = [len(s) for s in dataset["summary"]]
+    avg_dialogue_length = sum(dialogue_lengths) / len(dialogue_lengths)
+    avg_summary_length = sum(summary_lengths) / len(summary_lengths)
+    
+    # Create selection results in the specified format
     selection_results = {
         "selection_method": "d2pruning",
         "num_samples": len(selected_indices),
         "selected_indices": selected_indices,
+        "selection_time": selection_time,
+        "embedding_model": args.embedding_model.split("/")[-1],
+        "train_dataset_size": len(dataset),
         "selected_dialogues": [d for d in selected_dataset["dialogue"]],
         "selected_summaries": [s for s in selected_dataset["summary"]],
-        "gamma": args.gamma,
-        "importance_scores": importance_scores[selected_indices].tolist(),
-        "avg_importance_score": float(np.mean(importance_scores[selected_indices])),
-        "full_avg_importance_score": float(np.mean(importance_scores)),
-        "improvement_ratio": float(np.mean(importance_scores[selected_indices]) / np.mean(importance_scores))
+        "metadata": {
+            "total_samples": len(dataset),
+            "avg_dialogue_length": avg_dialogue_length,
+            "avg_summary_length": avg_summary_length
+        }
     }
     
     # Save selection results
@@ -303,15 +314,13 @@ def main():
     # Log final metrics to wandb
     wandb.log({
         "final_num_samples": len(selected_indices),
-        "final_avg_importance": selection_results['avg_importance_score'],
-        "baseline_avg_importance": selection_results['full_avg_importance_score'],
-        "improvement_ratio": selection_results['improvement_ratio']
+        "selection_time": selection_time,
+        "avg_dialogue_length": avg_dialogue_length,
+        "avg_summary_length": avg_summary_length
     })
     
     logger.info(f"D2Pruning selection saved to {output_file}")
-    logger.info(f"Selected {len(selected_indices)} samples with avg importance score: "
-               f"{selection_results['avg_importance_score']:.4f} "
-               f"(vs. {selection_results['full_avg_importance_score']:.4f} overall)")
+    logger.info(f"Selected {len(selected_indices)} samples in {selection_time:.2f} seconds")
     
     # Finish wandb run
     wandb.finish()
