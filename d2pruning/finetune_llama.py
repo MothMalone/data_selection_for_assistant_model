@@ -429,6 +429,10 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
     parser.add_argument("--cache_dir", type=str, default="./cache", help="Directory for caching models and data.")
     parser.add_argument("--output_dir", type=str, default="./finetuned_models", help="Directory to save fine-tuned models.")
+    parser.add_argument("--use_full_dataset", action="store_true", 
+                       help="Use full training dataset instead of selected samples")
+    parser.add_argument("--dataset_name", type=str, default="knkarthick/dialogsum",
+                       help="Dataset name (used when use_full_dataset is True)")
 
     args = parser.parse_args()
 
@@ -481,9 +485,19 @@ def main():
                 config=vars(args)
             )
 
-    # Get dialogues and summaries from selection data
-    dialogues = selection_data['selected_dialogues']
-    summaries = selection_data['selected_summaries']
+    if args.use_full_dataset:
+        logger.infO(f"Loading full dataset: {args.dataset_name}")
+        from datasets import load_dataset
+        full_dataset = load_dataset(args.dataset_name, split="train", cache_dir=args.cache_dir)
+        dialogues = full_dataset["dialogue"]
+        summaries = full_dataset["summary"]
+        selection_method = "full_dataset"
+        num_samples = len(dialogues)
+        logger.info(f"Using full dataset with {num_samples} samples")
+    else:
+        # Get dialogues and summaries from selection data
+        dialogues = selection_data['selected_dialogues']
+        summaries = selection_data['selected_summaries']
     
     # Create a Hugging Face dataset from the selected data
     dataset = Dataset.from_dict({
