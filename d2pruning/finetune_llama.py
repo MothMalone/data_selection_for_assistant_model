@@ -412,7 +412,7 @@ def load_selection_results(results_file: str) -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(description="LLaMA-7B Fine-tuning for DialogSum")
-    parser.add_argument("--selection_results", type=str, required=True,
+    parser.add_argument("--selection_results", type=str, required=False,
                        help="Path to selection results JSON file")
     parser.add_argument("--model_name", type=str, default="meta-llama/Llama-2-13b-hf",
                        help="LLaMA model name")
@@ -438,13 +438,19 @@ def main():
 
     set_seed(args.seed)
 
-    # Load selection results
-    logger.info(f"Loading selection results from {args.selection_results}")
-    with open(args.selection_results, 'r') as f:
-        selection_data = json.load(f)
+    # Initialize default values
+    selection_method = "unknown"
+    num_samples = 0
+    selection_data = {}
 
-    selection_method = selection_data['selection_method']
-    num_samples = selection_data['num_samples']
+    # Only load selection results if not using full dataset and a file is provided
+    if not args.use_full_dataset and args.selection_results:
+        logger.info(f"Loading selection results from {args.selection_results}")
+        with open(args.selection_results, 'r') as f:
+            selection_data = json.load(f)
+        
+        selection_method = selection_data['selection_method']
+        num_samples = selection_data['num_samples']
     
     # Initialize W&B
     wandb_logger = None
@@ -486,7 +492,7 @@ def main():
             )
 
     if args.use_full_dataset:
-        logger.infO(f"Loading full dataset: {args.dataset_name}")
+        logger.info(f"Loading full dataset: {args.dataset_name}")
         from datasets import load_dataset
         full_dataset = load_dataset(args.dataset_name, split="train", cache_dir=args.cache_dir)
         dialogues = full_dataset["dialogue"]
